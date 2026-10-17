@@ -1,23 +1,24 @@
-% define_parameters.m
-% Stores all constants and parameters for the simulation.
-
 function params = define_parameters()
-    % --- Fungal Growth Constants ---
-    params.r = 0.35;          % Intrinsic growth rate (derived from radial growth)
-    params.K = 100;           % Carrying capacity (arbitrary units for max biomass)
-    params.B0 = 0.1;          % Initial biomass (e.g., from a single spore)
-
-    % --- Swab Efficacy Constants ---
-    params.eta = 0.60;        % Swab efficacy (60% removal per swab)
-    params.n_swabs = 1:5;     % Number of swabs to simulate (1 to 5)
-
-    % --- Simulation Time Settings ---
-    params.t_start = 0;       % Start time (days)
-    params.t_end = 30;        % End time (days)
-    params.t_swab = 7;        % Time (days) when swabbing occurs
+    % --- Realistic Saxophone Constants ---
+    params.r_max = 0.038;     % Maximum growth rate (cm/day equivalent)
+    params.K = 1000;          % Carrying capacity (CFU/cm²)
+    params.B0 = 10;           % Initial biomass (CFU/cm²) - detection limit
+    params.eta = 0.30;        % Standard swab efficacy (30% removal per pass)
     
-    % --- Plotting Settings ---
-    params.plot_title = 'Fungal Biomass in Saxophone Bore';
-    params.xlabel = 'Time (days)';
-    params.ylabel = 'Fungal Biomass (a.u.)';
+    % --- Thresholds ---
+    params.thresh_hygiene = 10;    % CFU/cm² (Hygiene failure / Detection limit)
+    params.thresh_danger = 1000;   % CFU/cm² (Active contamination)
+
+    % --- Dynamic Environment (Time) ---
+    params.days_total = 180;       % Simulate for 6 months
+    params.hours_total = params.days_total * 24;
+    
+    % --- Nutrient Parameters (Saliva) ---
+    params.N0 = 1.0;          % Initial nutrient level
+    params.nutrient_rate = 0.05; % Nutrient added per hour of playing
+    params.K_s = 0.5;         % Half-saturation constant for Monod growth
+    
+    % --- Fungal Environmental Tolerances ---
+    params.T_opt = 25;        % Optimal temp (C)
+    params.RH_min = 70;       % Minimum RH for growth (%)
 end
