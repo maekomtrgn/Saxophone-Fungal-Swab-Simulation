@@ -1,52 +1,63 @@
 % main_simulation.m
 clear; clc; close all;
 
-% 1. Load parameters
-params = define_parameters();
+% 1. Load the database of 7 fungi
+species_list = define_species_parameters();
+num_species = length(species_list);
 
-% 2. Setup Time Vector (Hourly resolution for smooth plots)
-t = linspace(0, params.days_total, params.hours_total);
-initial_conditions = [params.B0; params.N0];
+% Setup figure
+figure('Position', [100, 100, 1000, 700]);
+colors = lines(num_species); 
+hold on;
 
-% 3. Simulate Baseline Growth (NO swabbing)
-[t_base, y_base] = ode45(@(t,y) growth_model(t, y, params), t, initial_conditions);
-B_baseline = y_base(:,1);
+legend_entries = cell(1, num_species);
 
-% 4. Simulate WITH Daily Swabbing
-% We run the simulation hour-by-hour to apply the swab at the end of each day
-B_swabbed = zeros(size(t));
-B_swabbed(1) = params.B0;
-y_current = initial_conditions;
+% 2. Loop through each fungus
+for i = 1:num_species
+    env = species_list(i).env;
 
-for i = 1:length(t)-1
-    % Integrate from current hour to next hour
-    [~, y_next] = ode45(@(t,y) growth_model(t, y, params), [t(i), t(i+1)], y_current);
-    y_current = y_next(end,:)';
-    
-    % Apply Swab at the end of the day (midnight)
-    % t(i+1) will be a whole number when a day is completed
-    if mod(t(i+1), 1) == 0 && t(i+1) > 0
-        y_current(1) = swab_model(y_current(1), params.eta, 1); % 1 swab per day
+    % Run for 365 days
+    env.days_total = 365; 
+    t = linspace(0, env.days_total, env.days_total * 4); 
+    initial_conditions = [env.B0; env.N0];
+
+    % Define the specific ODE for this fungus
+    ode_fun = @(t, y) growth_model(t, y, species_list(i).r_max, env);
+
+    % Run Simulation WITH Daily Swabbing
+    B_swabbed = zeros(size(t));
+    B_swabbed(1) = env.B0;
+    y_current = initial_conditions;
+
+    for j = 1:length(t)-1
+        [~, y_next] = ode45(ode_fun, [t(j), t(j+1)], y_current);
+        y_current = y_next(end,:)';
+
+        % Swab at the end of each day
+        if mod(t(j+1), 1) == 0 && t(j+1) > 0
+            y_current(1) = y_current(1) * (1 - env.eta); 
+        end
+
+        B_swabbed(j+1) = y_current(1);
     end
-    
-    B_swabbed(i+1) = y_current(1);
+
+    % Plot this species
+    plot(t, B_swabbed, 'Color', colors(i,:), 'LineWidth', 2);
+    legend_entries{i} = species_list(i).name;
 end
 
-% 5. Plotting (Log Scale with Thresholds)
-figure('Position', [100, 100, 900, 600]);
-semilogy(t, B_baseline, 'r-', 'LineWidth', 2, 'DisplayName', 'No Cleaning'); 
-hold on;
-semilogy(t, B_swabbed, 'b-', 'LineWidth', 1.5, 'DisplayName', 'Daily Standard Swab (30%)');
+% 3. FORCE TRUE LOG SCALE
+set(gca, 'YScale', 'log');
+ylim([8 1000]); % Set limits so we can see the 10 and 1000 lines
 
 % Add Threshold Lines
-yline(params.thresh_hygiene, 'k--', 'Hygiene Failure (10 CFU/cm²)', 'LineWidth', 1.5, 'DisplayName', 'Hygiene Threshold');
-yline(params.thresh_danger, 'k:', 'Active Contamination (1000 CFU/cm²)', 'LineWidth', 1.5, 'DisplayName', 'Danger Threshold');
+yline(10, 'k--', 'Hygiene Failure (10 CFU/cm²)', 'LineWidth', 1.5, 'HandleVisibility', 'off');
+yline(1000, 'k:', 'Danger Threshold (1000 CFU/cm²)', 'LineWidth', 1.5, 'HandleVisibility', 'off');
 
-% Formatting
 xlabel('Time (Days)', 'FontSize', 12);
-ylabel('Fungal Load (CFU/cm²)', 'FontSize', 12);
-title('Saxophone Fungal Growth: 6-Month Simulation', 'FontSize', 14);
-legend('Location', 'northwest', 'FontSize', 11);
+ylabel('Fungal Load (CFU/cm²) - Log Scale', 'FontSize', 12);
+title('Parallel Simulation: 7 Saxophone Fungi (1 Year, Daily Swabbing)', 'FontSize', 14);
+legend(legend_entries, 'Location', 'northwest');
 grid on;
 set(gca, 'FontSize', 11);
 
@@ -54,12 +65,5 @@ set(gca, 'FontSize', 11);
 if ~exist('../results', 'dir')
     mkdir('../results');
 end
-saveas(gcf, '../results/saxophone_simulation_realistic.png');
-disp('Simulation complete. Graph saved to the results folder.');
-title('Fungal Regrowth After Swabbing (at Day 7)');
-legend('show');
-grid on;
-hold off;
-saveas(gcf, '../results/swab_comparison.png');
-
-disp('Simulation complete. Plots saved to the results/ folder.');
+saveas(gcf, '../results/parallel_species_comparison_line.png');
+disp('True log line graph complete. Graph saved to results folder.');
